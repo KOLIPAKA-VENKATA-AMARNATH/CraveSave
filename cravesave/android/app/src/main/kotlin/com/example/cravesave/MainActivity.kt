@@ -1,4 +1,4 @@
-package com.example.serve_ease_new
+package com.example.cravesave
 
 import io.flutter.embedding.android.FlutterActivity
 
