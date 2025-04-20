@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../services/auth_service.dart';
 import '../../../models/user_model.dart';
 import '../../../theme/auth_theme.dart';
+import '../../../features/dashboard/routes/dashboard_routes.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -121,7 +122,38 @@ class _SignupScreenState extends State<SignupScreen> {
         if (!user.isVerified && user.role == 'ngo') {
           Navigator.pushReplacementNamed(context, '/verification-pending');
         } else {
-          Navigator.pushReplacementNamed(context, '/login');
+          // Navigate based on user role
+          switch (user.role) {
+            case 'donor':
+              Navigator.pushReplacementNamed(
+                context,
+                DashboardRoutes.donorDashboard,
+              );
+              break;
+            case 'ngo':
+              Navigator.pushReplacementNamed(
+                context,
+                DashboardRoutes.ngoDashboard,
+              );
+              break;
+            case 'volunteer':
+              Navigator.pushReplacementNamed(
+                context,
+                DashboardRoutes.volunteerDashboard,
+              );
+              break;
+            case 'admin':
+              Navigator.pushReplacementNamed(
+                context,
+                DashboardRoutes.adminDashboard,
+              );
+              break;
+            default:
+              Navigator.pushReplacementNamed(
+                context,
+                DashboardRoutes.dashboard,
+              );
+          }
         }
       }
     } catch (e) {
