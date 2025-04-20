@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import './features/splash/splash_screen.dart';
 import 'firebase_options.dart';
 import 'features/auth/routes/auth_routes.dart';
 import 'features/dashboard/routes/dashboard_routes.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/signup_screen.dart';
+import 'features/dashboard/screens/donor_dashboard_screen.dart';
+import 'features/donor/screens/donation_form_screen.dart';
+import 'features/donor/screens/nearby_volunteers_screen.dart';
+import 'features/donor/screens/donation_history_screen.dart';
+import 'features/donor/routes/donor_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(MyApp());
+  await Firebase.initializeApp();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -18,30 +27,48 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'CraveSave',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const SplashScreen(),
-        ...AuthRoutes.getRoutes(),
-        ...DashboardRoutes.getRoutes(),
+        '/': (context) => const AuthWrapper(),
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignupScreen(),
+        DonorRoutes.dashboard: (context) => const DonorDashboardScreen(),
+        DonorRoutes.donationForm: (context) => const DonationFormScreen(),
+        DonorRoutes.nearbyVolunteers: (context) => const NearbyVolunteersScreen(),
+        DonorRoutes.donationHistory: (context) => const DonationHistoryScreen(),
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasData) {
+          // User is logged in, navigate to appropriate dashboard
+          return const DonorDashboardScreen();
+        }
+
+        // User is not logged in, show login screen
+        return const LoginScreen();
       },
     );
   }

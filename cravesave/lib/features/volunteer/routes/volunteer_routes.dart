@@ -18,4 +18,4 @@ class VolunteerRoutes {
       availability: (context) => const AvailabilityScreen(),
     };
   }
-}
+} 

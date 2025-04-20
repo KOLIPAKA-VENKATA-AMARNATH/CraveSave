@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../models/donation_model.dart';
+import '../../../theme/auth_theme.dart';
+import 'accept_donation_screen.dart';
+import '../../../services/auth_service.dart';
 
 class AvailablePickupsScreen extends StatefulWidget {
   const AvailablePickupsScreen({super.key});
@@ -9,36 +13,97 @@ class AvailablePickupsScreen extends StatefulWidget {
 }
 
 class _AvailablePickupsScreenState extends State<AvailablePickupsScreen> {
-  bool _isLoading = false;
+  final _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Available Pickups')),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Available Pickup Requests',
-                      style: TextStyle(
-                        fontSize: 20,
+    return Theme(
+      data: AuthTheme.theme,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Available Pickups'),
+          centerTitle: true,
+        ),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('donations')
+              .where('status', isEqualTo: 'pending')
+              .orderBy('pickupDeadline')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Text('Error: ${snapshot.error}'),
+              );
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            final donations = snapshot.data?.docs ?? [];
+            if (donations.isEmpty) {
+              return const Center(
+                child: Text('No available pickups'),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: donations.length,
+              itemBuilder: (context, index) {
+                final donation = DonationModel.fromMap(
+                  donations[index].data() as Map<String, dynamic>,
+                  donations[index].id,
+                );
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    title: Text(
+                      donation.foodTitle,
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.secondary,
+                        fontSize: 18,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // TODO: Add pickup requests list view
-                    const Center(
-                      child: Text('No pickup requests available yet'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text('Quantity: ${donation.quantity}'),
+                        Text('Pickup Deadline: ${donation.pickupDeadline.toString().split(' ')[0]}'),
+                        const SizedBox(height: 8),
+                        Text(
+                          donation.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AcceptDonationScreen(
+                              donationId: donation.id,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('View Details'),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
-}
+} 

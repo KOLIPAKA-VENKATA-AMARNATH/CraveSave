@@ -7,6 +7,8 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  User? get currentUser => _auth.currentUser;
+
   Future<UserModel?> signUp(
     String name,
     String email,
