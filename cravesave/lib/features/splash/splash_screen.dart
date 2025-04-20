@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../onboarding/screens/onboarding_screen.dart';  // Add this import
+import '../../services/auth_service.dart';
+import '../onboarding/screens/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,11 +10,13 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotateAnimation;
+  final _authService = AuthService();
 
   @override
   void initState() {
@@ -46,13 +49,39 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    // In the initState method, update the navigation:
-    Future.delayed(Duration(seconds: 4), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => OnboardingScreen()),
-      );
-    });
+    // Check for existing user and navigate accordingly
+    _checkUserAndNavigate();
+  }
+
+  Future<void> _checkUserAndNavigate() async {
+    try {
+      // Wait for animations to complete
+      await Future.delayed(const Duration(seconds: 4));
+
+      // Check if user is already logged in
+      final user = await _authService.getCurrentUser();
+
+      if (mounted) {
+        if (user != null) {
+          // User is logged in, navigate to dashboard
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        } else {
+          // No user logged in, navigate to onboarding
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        // If there's an error, still navigate to onboarding
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      }
+    }
   }
 
   @override

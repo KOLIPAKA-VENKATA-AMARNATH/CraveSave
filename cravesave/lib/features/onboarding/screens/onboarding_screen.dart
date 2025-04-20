@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/onboarding_content.dart';
 import 'package:lottie/lottie.dart';
+import '../../auth/routes/auth_routes.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -21,8 +22,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _onSkip() {
-    // Navigate to your home or auth screen
-    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+    print('Skip button pressed');
+    try {
+      print('Attempting navigation to ${AuthRoutes.login}');
+      Navigator.pushReplacementNamed(context, AuthRoutes.login);
+      print('Navigation completed');
+    } catch (e) {
+      print('Error during navigation: $e');
+    }
   }
 
   @override
@@ -42,14 +49,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Positioned(
               top: 20,
               right: 20,
-              child: TextButton(
-                onPressed: _onSkip,
-                child: Text(
-                  'Skip',
-                  style: TextStyle(
-                    color: AppColors.secondary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    print("Skip button tapped");
+                    _onSkip();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Text(
+                      'Skip',
+                      style: TextStyle(
+                        color: AppColors.secondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -61,14 +78,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: PageView.builder(
                     controller: _pageController,
                     onPageChanged: (index) {
+                      print("forwarding to $index");
                       setState(() {
                         _pageIndex = index;
                       });
                     },
                     itemCount: onboardingPages.length,
-                    itemBuilder: (context, index) => OnboardingContentWidget(
-                      content: onboardingPages[index],
-                    ),
+                    itemBuilder:
+                        (context, index) => OnboardingContentWidget(
+                          content: onboardingPages[index],
+                        ),
                   ),
                 ),
                 // Navigation dots and next button
@@ -125,16 +144,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingContentWidget extends StatefulWidget {
   final OnboardingContent content;
 
-  const OnboardingContentWidget({
-    super.key,
-    required this.content,
-  });
+  const OnboardingContentWidget({super.key, required this.content});
 
   @override
-  State<OnboardingContentWidget> createState() => _OnboardingContentWidgetState();
+  State<OnboardingContentWidget> createState() =>
+      _OnboardingContentWidgetState();
 }
 
-class _OnboardingContentWidgetState extends State<OnboardingContentWidget> 
+class _OnboardingContentWidgetState extends State<OnboardingContentWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -149,17 +166,11 @@ class _OnboardingContentWidgetState extends State<OnboardingContentWidget>
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutBack,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
 
     _animationController.forward();
@@ -180,21 +191,19 @@ class _OnboardingContentWidgetState extends State<OnboardingContentWidget>
           const Spacer(),
           SizedBox(
             height: 300,
-            child: widget.content.isLottie
-                ? Lottie.asset(
-                    widget.content.image,
-                    fit: BoxFit.contain,
-                  )
-                : FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Image.asset(
-                        widget.content.image,
-                        fit: BoxFit.contain,
+            child:
+                widget.content.isLottie
+                    ? Lottie.asset(widget.content.image, fit: BoxFit.contain)
+                    : FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Image.asset(
+                          widget.content.image,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
-                  ),
           ),
           const SizedBox(height: 40),
           FadeTransition(
@@ -230,10 +239,7 @@ class _OnboardingContentWidgetState extends State<OnboardingContentWidget>
 }
 
 class DotIndicator extends StatelessWidget {
-  const DotIndicator({
-    super.key,
-    required this.isActive,
-  });
+  const DotIndicator({super.key, required this.isActive});
 
   final bool isActive;
 
@@ -244,7 +250,8 @@ class DotIndicator extends StatelessWidget {
       height: 8,
       width: isActive ? 24 : 8,
       decoration: BoxDecoration(
-        color: isActive ? AppColors.primary : AppColors.primary.withOpacity(0.4),
+        color:
+            isActive ? AppColors.primary : AppColors.primary.withOpacity(0.4),
         borderRadius: BorderRadius.circular(8),
       ),
     );

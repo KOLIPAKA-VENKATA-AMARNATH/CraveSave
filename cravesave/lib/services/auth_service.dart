@@ -72,16 +72,14 @@ class AuthService {
       );
 
       if (credential.user != null) {
-        DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(credential.user!.uid)
-            .get();
+        DocumentSnapshot doc =
+            await _firestore
+                .collection('users')
+                .doc(credential.user!.uid)
+                .get();
 
         if (doc.exists) {
-          return UserModel.fromMap(
-            doc.data() as Map<String, dynamic>,
-            doc.id,
-          );
+          return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
         }
       }
     } catch (e) {
@@ -93,5 +91,20 @@ class AuthService {
 
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  Future<UserModel?> getCurrentUser() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return null;
+
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) return null;
+
+      return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    } catch (e) {
+      print('Error getting current user: $e');
+      rethrow;
+    }
   }
 }
