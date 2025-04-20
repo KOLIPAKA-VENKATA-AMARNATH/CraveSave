@@ -51,13 +51,13 @@ class UserModel extends BaseModel {
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
-      role: map['role'] ?? '',
-      location: map['location'] as GeoPoint,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      role: map['role'] ?? 'donor',
+      location: map['location'] ?? const GeoPoint(0, 0),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isVerified: map['isVerified'] ?? false,
       active: map['active'] ?? true,
       profileImage: map['profileImage'],
-      lastActive: (map['lastActive'] as Timestamp).toDate(),
+      lastActive: (map['lastActive'] as Timestamp?)?.toDate() ?? DateTime.now(),
       deviceToken: map['deviceToken'],
     );
   }

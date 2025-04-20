@@ -1,19 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/user_model.dart';
-import '../utils/app_enums.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<UserCredential?> registerUser({
-    required String email,
-    required String password,
-    required String name,
-    required String phone,
-    required UserRole role,
-    required GeoPoint location,
+  Future<UserModel?> signUp(
+    String name,
+    String email,
+    String password,
+    String role, {
+    String? phone,
+    GeoPoint? location,
   }) async {
     try {
       // Create auth user
@@ -28,10 +28,10 @@ class AuthService {
           id: credential.user!.uid,
           name: name,
           email: email,
-          phone: phone,
-          role: role.value,
-          location: location,
-          isVerified: true,
+          phone: phone ?? '',
+          role: role,
+          location: location ?? const GeoPoint(0, 0), // Default to 0,0 if no location provided
+          isVerified: role != 'ngo', // NGOs need verification
           active: true,
           lastActive: DateTime.now(),
           createdAt: DateTime.now(),
@@ -44,11 +44,11 @@ class AuthService {
             .set(user.toMap());
 
         // Create NGO profile if role is NGO
-        if (role == UserRole.ngo) {
+        if (role == 'ngo') {
           await _createNgoProfile(credential.user!.uid, name);
         }
 
-        return credential;
+        return user;
       }
     } catch (e) {
       print('Registration error: $e');

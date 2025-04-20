@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/auth_service.dart';
-import '../../../utils/app_enums.dart';
-import '../../../features/dashboard/routes/dashboard_routes.dart';
-import 'ngo_signup_screen.dart';
-import 'volunteer_signup_screen.dart';
-import 'admin_signup_screen.dart';
+import '../../../models/user_model.dart';
+import '../../../theme/auth_theme.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,119 +14,27 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _authService = AuthService();
 
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
-
-  UserRole _selectedRole = UserRole.donor;
-  GeoPoint? _selectedLocation;
+  String _selectedRole = 'donor';
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  GeoPoint? _selectedLocation;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
+    _confirmPasswordController.dispose();
     _phoneController.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleSignup() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your location')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      // For donor, complete registration directly
-      if (_selectedRole == UserRole.donor) {
-        final credential = await AuthService().registerUser(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          name: _nameController.text.trim(),
-          phone: _phoneController.text.trim(),
-          role: _selectedRole,
-          location: _selectedLocation!,
-        );
-
-        if (credential != null && mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            DashboardRoutes.donorDashboard,
-          );
-        }
-      } else {
-        // For other roles, navigate to role-specific screens
-        if (mounted) {
-          switch (_selectedRole) {
-            case UserRole.ngo:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => NgoSignupScreen(
-                        email: _emailController.text.trim(),
-                        password: _passwordController.text,
-                        name: _nameController.text.trim(),
-                        phone: _phoneController.text.trim(),
-                        location: _selectedLocation!,
-                      ),
-                ),
-              );
-              break;
-            case UserRole.volunteer:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => VolunteerSignupScreen(
-                        email: _emailController.text.trim(),
-                        password: _passwordController.text,
-                        name: _nameController.text.trim(),
-                        phone: _phoneController.text.trim(),
-                        location: _selectedLocation!,
-                      ),
-                ),
-              );
-              break;
-            case UserRole.admin:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => AdminSignupScreen(
-                        email: _emailController.text.trim(),
-                        password: _passwordController.text,
-                        name: _nameController.text.trim(),
-                        phone: _phoneController.text.trim(),
-                        location: _selectedLocation!,
-                      ),
-                ),
-              );
-              break;
-            default:
-              break;
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -191,127 +96,252 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select your location')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      UserModel? user = await _authService.signUp(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text,
+        _selectedRole,
+        phone: _phoneController.text.trim(),
+        location: _selectedLocation,
+      );
+
+      if (user != null && mounted) {
+        if (!user.isVerified && user.role == 'ngo') {
+          Navigator.pushReplacementNamed(context, '/verification-pending');
+        } else {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
+    return Theme(
+      data: AuthTheme.theme,
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AuthTheme.defaultPadding),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  const Icon(
+                    Icons.food_bank,
+                    size: 80,
+                    color: AuthTheme.primaryColor,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Create Account',
+                    style: AuthTheme.titleStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Join us in making a difference',
+                    style: AuthTheme.subtitleStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 40),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!value.contains('@')) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your phone number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _selectedRole,
+                    decoration: const InputDecoration(
+                      labelText: 'Role',
+                      prefixIcon: Icon(Icons.people_outline),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'donor',
+                        child: Text('Donor'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ngo',
+                        child: Text('NGO'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'volunteer',
+                        child: Text('Volunteer'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedRole = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _getCurrentLocation,
+                    icon: const Icon(Icons.location_on),
+                    label: Text(
+                      _selectedLocation == null
+                          ? 'Select Location'
+                          : 'Location Selected',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                        },
+                      ),
+                    ),
+                    obscureText: _obscureConfirmPassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleSignup,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Sign Up'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Already have an account?',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(context, '/login');
+                        },
+                        child: const Text('Sign In'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<UserRole>(
-                value: _selectedRole,
-                decoration: const InputDecoration(
-                  labelText: 'Select Role',
-                  border: OutlineInputBorder(),
-                ),
-                items:
-                    UserRole.values.map((role) {
-                      return DropdownMenuItem(
-                        value: role,
-                        child: Text(role.value.toUpperCase()),
-                      );
-                    }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedRole = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _getCurrentLocation,
-                icon: const Icon(Icons.location_on),
-                label: Text(
-                  _selectedLocation == null
-                      ? 'Select Location'
-                      : 'Location Selected',
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSignup,
-                child:
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Continue'),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                child: const Text('Already have an account? Login'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
